@@ -56,8 +56,15 @@ describe Pathfinding do
     it "should give same path if no changes were made" do
       expect(subject.find_path_update(2,12, 37, 12, path)).to eq(path)
     end
-    it "should make simple modifications" do
+    it "should make simple modifications in the goal" do
       expect(subject.find_path_update(2,12, 39, 12, path)).to eq(path - [[37, 12]] +[[39, 12]])
+    end
+    it "should make simple modifications in the beginning" do
+      expect(subject.find_path_update(0,12, 37, 12, path)).to eq([[0,12]] + path)
+    end
+
+    it "should remove visited path in the beginning" do
+      expect(subject.find_path_update(22,2, 37, 12, path)).to eq(path.drop_while {|e| e != [22, 2]} )
     end
   end
 

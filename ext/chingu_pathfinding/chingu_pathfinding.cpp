@@ -161,20 +161,21 @@ class pathfinder_t {
   }
 
   path_t find_path_update(long int x1, long int y1, long int x2, long int y2, std::vector<location_t> current) {
-    location_t current_location(x1,y1);
+    location_t start(x1,y1);
     location_t goal(x2,y2);
-    path_t x;
+    path_t init_path;
     by_estimated_cost estimator(goal);
     queue_t queue(estimator);
+    init_path.add_loc(start, goal);
     // Cut out the part of the path already visited
     bool drop = true;
     for (location_t l : current) {
-      if (dist(l, current_location) < 2) {
+      if (dist(l, start) < block_size) {
         drop = false;
       }
-      if (!drop) {
-        x.add_loc(l, goal);
-        queue.push(x);
+      if (!drop && start != l) {
+        init_path.add_loc(l, goal);
+        queue.push(init_path);
       }
     }
     // Add every prefix of current to initial guess and converge to new location.
