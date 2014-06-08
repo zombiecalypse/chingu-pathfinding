@@ -113,30 +113,16 @@ class pathfinder_t {
     return false;
   }
 
-  public:
-  path_t find_path(long int x1, long int y1, long int x2, long int y2) {
-    typedef std::priority_queue<path_t, std::vector<path_t>, by_estimated_cost> queue_t;
-    location_t start(x1,y1);
-    location_t goal(x2,y2);
-    by_estimated_cost estimator(goal);
-    queue_t queue(estimator);
+  typedef std::priority_queue<path_t, std::vector<path_t>, by_estimated_cost> queue_t;
+  path_t find_path_internal(queue_t queue, location_t goal) {
     std::set<location_t> visited;
-    path_t init_path(&map, &connectivity);
-    long int next_node_x = (x1 / block_size)*block_size + block_size/2;
-    long int next_node_y = (y1 / block_size)*block_size + block_size/2;
-    init_path.add_loc(start, goal);
-    location_t start_block(next_node_x, next_node_y);
-    if (start != start_block) {
-      init_path.add_loc(start_block, goal);
-    }
-    queue.push(init_path);
     while (!queue.empty()) {
       path_t current = queue.top();
       location_t end = current.end();
       queue.pop();
       if (visited.find(end) != visited.end()) continue;
       visited.insert(end);
-      if (dist(end, goal) < block_size/2) {
+      if (dist(end, goal) < block_size) {
         if (end != goal) {
           current.add_loc(goal, goal);
         }
@@ -156,10 +142,43 @@ class pathfinder_t {
     return path_t();
   }
 
+  public:
+  path_t find_path(long int x1, long int y1, long int x2, long int y2) {
+    location_t start(x1,y1);
+    location_t goal(x2,y2);
+    by_estimated_cost estimator(goal);
+    queue_t queue(estimator);
+    path_t init_path(&map, &connectivity);
+    long int next_node_x = (x1 / block_size)*block_size + block_size/2;
+    long int next_node_y = (y1 / block_size)*block_size + block_size/2;
+    init_path.add_loc(start, goal);
+    location_t start_block(next_node_x, next_node_y);
+    if (start != start_block) {
+      init_path.add_loc(start_block, goal);
+    }
+    queue.push(init_path);
+    return find_path_internal(queue, goal);
+  }
+
   path_t find_path_update(long int x1, long int y1, long int x2, long int y2, std::vector<location_t> current) {
+    location_t current_location(x1,y1);
+    location_t goal(x2,y2);
     path_t x;
+    by_estimated_cost estimator(goal);
+    queue_t queue(estimator);
+    // Cut out the part of the path already visited
+    bool drop = true;
+    for (location_t l : current) {
+      if (dist(l, current_location) < 2) {
+        drop = false;
+      }
+      if (!drop) {
+        x.add_loc(l, goal);
+        queue.push(x);
+      }
+    }
     // Add every prefix of current to initial guess and converge to new location.
-    return x;
+    return find_path_internal(queue, goal);
   }
 
   void Init(VALUE self, long int width, long int height, long int block_size) {
@@ -285,6 +304,27 @@ static VALUE find_path(VALUE self, VALUE x1, VALUE y1, VALUE x2, VALUE y2) {
   return rb_ary_new4(i, path_ruby);
 }
 
+static VALUE find_path_update(VALUE self, VALUE x1, VALUE y1, VALUE x2, VALUE y2, VALUE prev) {
+  pathfinder_t* pf;
+  Data_Get_Struct(self, pathfinder_t, pf);
+  unsigned int len = RARRAY_LEN(prev);
+  std::vector<location_t> p;
+  for (int i = 0; i < len; i++) {
+    VALUE pt = rb_ary_shift(prev);
+    long int x = NUM2INT(rb_ary_shift(pt));
+    long int y = NUM2INT(rb_ary_shift(pt));
+    p.push_back(location_t(x, y));
+  }
+  path_t path = pf->find_path_update(NUM2INT(x1), NUM2INT(y1), NUM2INT(x2), NUM2INT(y2), p);
+  if (path.path.empty()) return Qnil;
+  VALUE* path_ruby = new VALUE[path.path.size()];
+  int i = 0;
+  for (auto loc: path.path) {
+    path_ruby[i++] = rb_ary_new3(2, INT2NUM(loc.first), INT2NUM(loc.second));
+  }
+  return rb_ary_new4(i, path_ruby);
+}
+
 static VALUE print_map(VALUE self) {
   pathfinder_t* pf;
   Data_Get_Struct(self, pathfinder_t, pf);
@@ -299,6 +339,7 @@ static void Init_pathfinding() {
   klass = rb_const_get(rb_cObject, rb_intern("Pathfinding"));
   rb_define_alloc_func(klass, alloc_pathfinder);
   rb_define_method(klass, "initialize", (rb_method) init, 3);
-  rb_define_method(klass, "find_path", (rb_method) find_path, 4);
   rb_define_method(klass, "to_s", (rb_method) print_map, 0);
+  rb_define_private_method(klass, "_find_path", (rb_method) find_path, 4);
+  rb_define_private_method(klass, "_find_path_update", (rb_method) find_path_update, 5);
 }
