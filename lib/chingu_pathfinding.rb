@@ -1,5 +1,5 @@
 class Pathfinding
-  VERSION = '1.1.1'
+  VERSION = '1.1.2'
   def find_path(x1, y1, x2, y2)
     throw "Require points to be numeric, got #{[x1, y1, x2, y2]}." unless [x1,y1,x2,y2].all? {|x| x.kind_of?(Numeric)}
     _find_path(x1, y1, x2, y2)

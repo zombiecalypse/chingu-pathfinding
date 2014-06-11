@@ -9,6 +9,7 @@
 #include <functional>
 #include <stdexcept>
 #include <sstream>
+#include <limits>
 
 static void Init_pathfinding();
 
@@ -37,16 +38,16 @@ struct point_t {
 };
 typedef std::pair<long int, long int> location_t;
 
-long int dist(const location_t& a, const location_t& b) {
-  long int dx = a.first-b.first;
-  long int dy = a.second-b.second;
-  return std::abs(dx) + std::abs(dy);
+float dist(const location_t& a, const location_t& b) {
+  float dx = a.first-b.first;
+  float dy = a.second-b.second;
+  return std::sqrt(dx*dx + dy*dy);
 }
 
 class path_t {
   std::map< location_t, point_t >* map_p;
   std::multimap< location_t, location_t >* connectivity_p;
-  long int cost_paid;
+  float cost_paid;
 
   public:
   std::vector<location_t> path;
@@ -55,7 +56,7 @@ class path_t {
   path_t(std::map< location_t, point_t >* mm,
       std::multimap< location_t, location_t >* cc) 
     : map_p(mm), connectivity_p(cc), cost_paid(0), path() { }
-  long int get_cost_paid() const { return cost_paid; }
+  float get_cost_paid() const { return cost_paid; }
   void add_loc(location_t l, const location_t& goal) {
     if (!path.empty()) {
       location_t last = *path.crbegin();
@@ -63,7 +64,7 @@ class path_t {
     }
     path.push_back(l);
   }
-  long int dist_to(const location_t& goal) const {
+  float dist_to(const location_t& goal) const {
     return dist(*path.crbegin(), goal);
   }
 
@@ -98,6 +99,7 @@ class pathfinder_t {
   }
 
   bool line_blocked(const long int x1, const long int y1, const long int x2, const long int y2) {
+    if (block_size == 1) return false;
     long int dx = dir(x1, x2);
     long int dy = dir(y1, y2);
     long int runner_x = x1;
@@ -169,14 +171,20 @@ class pathfinder_t {
     init_path.add_loc(start, goal);
     // Cut out the part of the path already visited
     bool drop = true;
+    float last_dist = std::numeric_limits<float>::max();
     for (location_t l : current) {
-      if (dist(l, start) < block_size) {
+      float d = dist(l, start);
+      if (d > last_dist) {
         drop = false;
       }
       if (!drop && start != l) {
         init_path.add_loc(l, goal);
         queue.push(init_path);
       }
+      last_dist = d;
+    }
+    if (queue.empty()) {
+      queue.push(init_path);
     }
     // Add every prefix of current to initial guess and converge to new location.
     return find_path_internal(queue, goal);
