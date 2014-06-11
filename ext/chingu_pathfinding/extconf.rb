@@ -14,4 +14,5 @@ end
 have_header("ruby.h")
 have_library("stdc++")
 try_compiler_option('-std=c++11')
+try_compiler_option('-O3')
 create_makefile('chingu_pathfinding/chingu_pathfinding')
