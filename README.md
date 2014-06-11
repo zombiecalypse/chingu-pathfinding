@@ -1,5 +1,6 @@
 Chingu Pathfinding
 ==================
+[![Gem Version](https://badge.fury.io/rb/chingu-pathfinding.svg)](http://badge.fury.io/rb/chingu-pathfinding)
 
 This library is a C++ backed Ruby implementation of the A\* pathfinding
 algorithm. All you have to do is to create a subclass of `Pathfinding` 
